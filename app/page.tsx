@@ -1,65 +1,143 @@
-import Image from "next/image";
+'use client';
+import { useState, useEffect } from 'react';
 
-export default function Home() {
+export default function AdminPage() {
+  // 如果你是 TypeScript (page.tsx)，这里可能报红，可以忽略，或者把文件后缀改为 .js
+  const [files, setFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [content, setContent] = useState('');
+  const [sha, setSha] = useState(''); 
+  const [loading, setLoading] = useState(false);
+
+  // 1. 加载文件列表
+  useEffect(() => {
+    fetch('/api/posts')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setFiles(data);
+        } else {
+          console.error("API返回错误:", data);
+          alert("获取文章失败，请检查 Vercel 环境变量配置是否正确");
+        }
+      })
+      .catch(err => console.error(err));
+  }, []);
+
+  // 2. 点击文件加载内容
+  const loadFile = async (filename) => {
+    setLoading(true);
+    setSelectedFile(filename);
+    try {
+      const res = await fetch(`/api/file?filename=${filename}`);
+      const data = await res.json();
+      setContent(data.content);
+      setSha(data.sha);
+    } catch (e) {
+      alert("读取文件失败");
+    }
+    setLoading(false);
+  };
+
+  // 3. 保存修改
+  const saveFile = async () => {
+    if (!selectedFile) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: selectedFile,
+          content: content,
+          sha: sha 
+        })
+      });
+      
+      if (res.ok) {
+        alert('✅ 保存成功！VitePress 正在重新构建...');
+        loadFile(selectedFile); // 刷新 SHA
+      } else {
+        const err = await res.json();
+        alert('❌ 保存失败: ' + (err.error || '未知错误'));
+      }
+    } catch (e) {
+      alert('保存请求发送失败');
+    }
+    setLoading(false);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif', color: '#333' }}>
+      {/* 左侧列表 */}
+      <div style={{ width: '260px', borderRight: '1px solid #eee', padding: '20px', overflowY: 'auto', background: '#f9f9f9' }}>
+        <h2 style={{ fontSize: '18px', marginBottom: '20px' }}>文章列表</h2>
+        {files.length === 0 && <p style={{color: '#888'}}>加载中...</p>}
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          {files.map((file: any) => (
+            <li 
+              key={file.name} 
+              onClick={() => loadFile(file.name)}
+              style={{ 
+                cursor: 'pointer', 
+                padding: '10px', 
+                borderRadius: '6px',
+                marginBottom: '5px',
+                background: selectedFile === file.name ? '#0070f3' : 'transparent',
+                color: selectedFile === file.name ? '#fff' : '#333'
+              }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+              {file.name}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 右侧编辑区 */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '30px' }}>
+        {selectedFile ? (
+          <>
+            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>正在编辑: {selectedFile}</h3>
+              <button 
+                onClick={saveFile} 
+                disabled={loading} 
+                style={{ 
+                  padding: '10px 20px', 
+                  background: loading ? '#ccc' : '#0070f3', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '5px', 
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                {loading ? '处理中...' : '保存修改'}
+              </button>
+            </div>
+            <textarea
+              style={{ 
+                flex: 1, 
+                width: '100%', 
+                padding: '15px', 
+                fontSize: '16px', 
+                lineHeight: '1.6', 
+                border: '1px solid #ddd', 
+                borderRadius: '8px',
+                fontFamily: 'monospace',
+                resize: 'none',
+                outline: 'none'
+              }}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+          </>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#888' }}>
+            👈 请在左侧选择一篇文章开始编辑
+          </div>
+        )}
+      </div>
     </div>
   );
 }
