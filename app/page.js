@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
-  // 🔴 修复点 1：明确告诉 TS 这是一个存放任意数据的数组
-  const [files, setFiles] = useState<any[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  // 如果你是 TypeScript (page.tsx)，这里可能报红，可以忽略，或者把文件后缀改为 .js
+  const [files, setFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [content, setContent] = useState('');
   const [sha, setSha] = useState(''); 
   const [loading, setLoading] = useState(false);
@@ -18,14 +18,14 @@ export default function AdminPage() {
           setFiles(data);
         } else {
           console.error("API返回错误:", data);
-          // alert("获取文章失败，请检查 Vercel 环境变量配置是否正确");
+          alert("获取文章失败，请检查 Vercel 环境变量配置是否正确");
         }
       })
       .catch(err => console.error(err));
   }, []);
 
   // 2. 点击文件加载内容
-  const loadFile = async (filename: string) => {
+  const loadFile = async (filename) => {
     setLoading(true);
     setSelectedFile(filename);
     try {
@@ -74,7 +74,6 @@ export default function AdminPage() {
         <h2 style={{ fontSize: '18px', marginBottom: '20px' }}>文章列表</h2>
         {files.length === 0 && <p style={{color: '#888'}}>加载中...</p>}
         <ul style={{ listStyle: 'none', padding: 0 }}>
-          {/* 这里的 any 是为了绕过 TS 检查 */}
           {files.map((file: any) => (
             <li 
               key={file.name} 
