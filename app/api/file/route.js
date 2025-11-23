@@ -37,7 +37,7 @@ export async function POST(request) {
       message: `Update ${filename} via Custom Admin`, // Commit 信息
       content: Buffer.from(content).toString('base64'), // 转回 Base64
       sha: sha, // 必须带上原文件的 SHA，否则 GitHub 会报错（防止冲突）
-      branch: 'main' // 你的主分支
+      branch: 'master' // 你的主分支
     });
 
     return NextResponse.json({ success: true });
